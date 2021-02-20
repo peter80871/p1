@@ -3,10 +3,6 @@ from bs4 import BeautifulSoup
 from lxml import html
 import sqlite3
 
-#conn = sqlite3.connect('database.db')
-#c = conn.cursor()
-
-# without this func server return code 419
 class Parser():
     def __init__(self, xsrf, laravel, user_xsrf):
         pass
@@ -58,8 +54,9 @@ class Parser():
             'situation': 'all',
             'coach_option': 'all',
             'after_int_cup': 'all'}
-        #open('a.html', 'w').write(str(requests.post("https://smart-tables.ru/show/constructed", headers=HEADERS, params=PARAMS).text))
+
         html = requests.post('https://smart-tables.ru/show/constructed', headers=HEADERS, params=PARAMS).text
+
         return html
 
     def add_data(data, league, team):
@@ -95,7 +92,8 @@ class Parser():
     def db_cleaner():
         conn = sqlite3.connect('database.db')
         c = conn.cursor() 
-        c.execute('DROP TABLE ALL_MATCHES')
+        c.execute('CREATE TABLE "COMMAND_IN_LEAGUES" (league TEXT, command TEXT);')
+        c.execute('CREATE TABLE "BOT_USERS" (user_id INT);')
         c.execute('CREATE TABLE "ALL_MATCHES" (league TEXT, team TEXT, team1 TEXT, team2 TEXT, t1 INTEGER, t2 INTEGER, date TEXT, t INTEGER);')
         conn.commit()
         conn.close()
@@ -110,3 +108,6 @@ def r():
         Parser.add_data(html, i[0], i[1])
         print('writed')
 
+i = input(int())
+if i == 1:
+    Parser.db_cleaner()
