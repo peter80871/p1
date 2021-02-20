@@ -108,6 +108,4 @@ def r():
         Parser.add_data(html, i[0], i[1])
         print('writed')
 
-i = input(int())
-if i == 1:
-    Parser.db_cleaner()
+print(Parser.get_cookie())
