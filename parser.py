@@ -54,7 +54,7 @@ class Parser():
             'client': 'free',
             'answer_id': 'teamAnswer',
             'source': 'Основной источник',
-            'oddsrange': '0.5 1.6,
+            'oddsrange': '0.5 1.6',
             'situation': 'all',
             'coach_option': 'all',
             'after_int_cup': 'all'}
