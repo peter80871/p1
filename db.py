@@ -17,3 +17,14 @@ def db_drop():
     c.execute('DROP TABLE BOT_USERS')
     conn.commit()
     conn.close()
+
+def show_tables():
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute("""select * from sqlite_master
+            where type = 'table'""")
+    tables = c.fetchall()
+    conn.close()
+    for table in tables:
+      #print(table) # информация о таблицах
+      print(table[1]) #названия тадлиц

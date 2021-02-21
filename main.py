@@ -36,9 +36,13 @@ def start_message(message):
 @bot.message_handler(content_types=['text'])
 def send_text(message):
     if message.text.lower() == 'create table' or message.text.lower() == 'создать таблицы':
-        bot.send_message(message.chat.id, 'БД очищена')
-    elif message.text.lower() == 'drop table' or message.text.lower() == 'удалить таблицы':
+        db.db_create()
         bot.send_message(message.chat.id, 'БД создана')
+    elif message.text.lower() == 'drop table' or message.text.lower() == 'удалить таблицы':
+        db.db_drop()
+        bot.send_message(message.chat.id, 'БД очищена')
+    elif message.text.lower() == 'show tables':
+        print(db.show_tables())
 
     elif message.text.lower() == 'get r':
         r = parser.Parser.r()
