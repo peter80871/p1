@@ -40,5 +40,9 @@ def send_text(message):
     elif message.text.lower() == 'drop table' or message.text.lower() == 'удалить таблицы':
         bot.send_message(message.chat.id, 'БД создана')
 
+    elif message.text.lower() == 'get r':
+        r = parser.Parser.r()
+        bot.send_message(message.chat.id, f'{r}')
+    
 
 bot.polling()

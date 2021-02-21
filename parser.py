@@ -108,4 +108,4 @@ def r():
         Parser.add_data(html, i[0], i[1])
         print('writed')
 
-print(Parser.get_cookie())
+        return 0
