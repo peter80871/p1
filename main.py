@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from lxml import html
 import sqlite3
 import parser
+import db
 import schedule, time
 import telebot
 
@@ -32,6 +33,12 @@ def start_message(message):
     else:
         bot.send_message(message.chat.id, 'Вы уже есть в базе рассылки')
      
+@bot.message_handler(content_types=['text'])
+def send_text(message):
+    if message.text.lower() == 'create table' or message.text.lower() == 'создать таблицы':
+        bot.send_message(message.chat.id, 'БД очищена')
+    elif message.text.lower() == 'drop table' or message.text.lower() == 'удалить таблицы':
+        bot.send_message(message.chat.id, 'БД создана')
 
 
 bot.polling()
