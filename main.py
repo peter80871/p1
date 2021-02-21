@@ -45,7 +45,7 @@ def send_text(message):
         print(db.show_tables())
 
     elif message.text.lower() == 'get r':
-        r = parser.Parser.r()
+        r = parser.r()
         bot.send_message(message.chat.id, f'{r}')
     
 
