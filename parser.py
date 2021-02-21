@@ -109,3 +109,6 @@ def r():
         print('writed')
 
         return 0
+
+if __name__ == 'main':
+    r()

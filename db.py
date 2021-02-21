@@ -24,5 +24,7 @@ def show_tables():
     c.execute("""select * from sqlite_master
             where type = 'table'""")
     tables = c.fetchall()
-    return(tables)
     conn.close()
+
+
+    return(tables)
