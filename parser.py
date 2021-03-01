@@ -2,113 +2,139 @@ import requests
 from bs4 import BeautifulSoup
 from lxml import html
 import sqlite3
+from threading import Thread
+import time
 
-class Parser():
-    def __init__(self, xsrf, laravel, user_xsrf):
-        pass
+def get_cookie():
+    response = requests.get('https://smart-tables.ru')   # start new session and generate xsrf token
 
-    def get_cookie():
-        response = requests.get('https://smart-tables.ru/team/Skenderbeu')   # make new session and generate xsrf token
+    xsrf = response.headers['Set-Cookie'].split(';')[0]                  # get xsrf token from header
+    laravel = response.headers['Set-Cookie'].split(',')[2].split(';')[0] # get laravel token
+    soup = BeautifulSoup(response.text, 'html.parser')                   # make soup obj
+    user_xsrf = soup.find_all(('meta', 'csrf-token'))[3]['content']      # get user token
 
-        xsrf = response.headers['Set-Cookie'].split(';')[0]                  # get xsrf token from header
-        laravel = response.headers['Set-Cookie'].split(',')[2].split(';')[0] # get laravel token
-        soup = BeautifulSoup(response.text, 'html.parser')                   # make soup obj
-        user_xsrf = soup.find_all(('meta', 'csrf-token'))[3]['content']      # get user token
+    return f'{xsrf};{laravel}', user_xsrf
 
-        return [xsrf, laravel, user_xsrf]
+def get_commands():
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute(f'SELECT * FROM "TEAM_IN_LEAGUES"')
+    c = c.fetchall()
+    conn.close()
+    return c 
 
-    def get_html(command, howmuch, cookie, token):
-        HEADERS ={
-            'POST': '/show/trends_basic HTTP/1.1',
-            'Host': 'smart-tables.ru',
-            'Connection': 'keep-alive',
-            'Content-Length': '652',
-            'sec-ch-ua': '"Chromium";v="88", "Google Chrome";v="88", ";Not A Brand";v="99"',
-            'Accept': 'text/plain, */*; q=0.01',
-            'X-CSRF-TOKEN': f'{token}',
-            'X-Requested-With': 'XMLHttpRequest',
-            'sec-ch-ua-mobile': '?0',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Origin': 'https://smart-tables.ru',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Dest': 'empty',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Cookie': f'{cookie}'}
-        PARAMS = {
-            'team': 'home',
-            'name': f'{command}',
-            'seasons': 'Все',
-            'competitions': 'Все',
-            'where': 'Все',
-            'howmuch': f'{howmuch}',
-            'stat': 'Голы',
-            'half': 'Первый тайм',
-            'lng': 'ru',
-            'client': 'free',
-            'answer_id': 'teamAnswer',
-            'source': 'Основной источник',
-            'oddsrange': '0.5 1.6',
-            'situation': 'all',
-            'coach_option': 'all',
-            'after_int_cup': 'all'}
+def get_html(country, team, howmuch, cookie, token, comp):
+    print(f'{team}: {comp}')
+    HEADERS ={
+        'X-CSRF-TOKEN': f'{token}',
+        'Cookie': f'{cookie}'}
+    PARAMS = {
+        'team': 'home',
+        'name': f'{team}',
+        'seasons': 'Все',
+        'competitions': f'{country}: {comp}',
+        'where': 'Все',
+        'howmuch': f'{howmuch}',
+        'stat': 'Голы',
+        'half': 'Первый тайм',
+        'lng': 'ru',
+        'client': 'free',
+        'answer_id': 'teamAnswer',
+        'source': 'Основной источник',
+        'oddsrange': 'all',
+        'situation': 'all',
+        'coach_option': 'all',
+        'after_int_cup': 'all'}
 
-        html = requests.post('https://smart-tables.ru/show/constructed', headers=HEADERS, params=PARAMS).text
+    response = requests.post('https://smart-tables.ru/show/constructed', headers=HEADERS, params=PARAMS)
+    if response.status_code == 200:
+        print(200)
+        return response.text
+    else:
+        print(response.status_code)
 
-        return html
+def get_actual_matches(team, cookie, token):
+    HEADERS ={
+        'X-CSRF-TOKEN': f'{token}',
+        'Cookie': f'{cookie}'}
 
-    def add_data(data, league, team):
-        conn = sqlite3.connect('database.db')
-        c = conn.cursor()
+    PARAMS = {'name': f'{team}'}
 
-        item_lxml = html.fromstring(data)
-        soup = BeautifulSoup(data, 'html.parser')  
-        all_mathes = soup.find_all('tr', class_='match-row')    
+    response = requests.post('https://smart-tables.ru/show/team_fixtures', headers=HEADERS, params=PARAMS)
 
-        q_m = len(all_mathes)
-        
-        team1 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[4]/a/@href')[0][6:] for x in range(q_m)]   # team 1
-        team2 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[7]/a/@href')[0][6:] for x in range(q_m)]   # team 2
-        t1 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[5]/text()')[0] for x in range(q_m)]           # Счет первой команды
-        t2 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[6]/text()')[0] for x in range(q_m)]           # Счет второй команды
-        date = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[3]/@title')[0] for x in range(q_m)]         # Дата проведения матча
-        t = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[8]/text()')[0] for x in range(q_m)]
-        for x in range(q_m): 
-            data = (league, team, team1[x], team2[x], t1[x], t2[x], date[x], t[x])   # Вся информация о матче
-            c.execute("INSERT INTO ALL_MATCHES VALUES(?, ?, ?, ?, ?, ?, ?, ?);", data)      # Добавление данных в БД
-            conn.commit()
-        conn.close()
-        
-    def get_commands():
-        conn = sqlite3.connect('database.db')
-        c = conn.cursor()
-        c.execute(f'SELECT * FROM "COMMAND_IN_LEAGUES"')
-        c = c.fetchmany(100000)
-        conn.close()
-        return c 
+    if response.status_code == 200:
+        print(200)
+        return response.text
+    else:
+        print(response.status_code)
+
+def add_data(country, league, team, cookie, token):
+    data = get_html(country, team, 100, cookie, token, league)
+    item_lxml = html.fromstring(data)
+    soup = BeautifulSoup(data, 'html.parser') 
+    all_mathes = soup.find_all('tr', class_='match-row') 
+
+    q_m = len(all_mathes)
+    print(q_m)
     
-    def db_cleaner():
+    team1 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[4]/a/@href')[0][6:] for x in range(q_m)]   # team 1
+    team2 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[7]/a/@href')[0][6:] for x in range(q_m)]   # team 2
+    t1 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[5]/text()')[0] for x in range(q_m)]           # Счет первой команды
+    t2 = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[6]/text()')[0] for x in range(q_m)]           # Счет второй команды
+    date = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[3]/@title')[0] for x in range(q_m)]         # Дата проведения матча
+    t = [item_lxml.xpath(f'//*[@id="table-home"]/tbody/tr[{x+1}]/td[8]/text()')[0] for x in range(q_m)]
+    
+    for x in range(q_m): 
         conn = sqlite3.connect('database.db')
-        c = conn.cursor() 
-        c.execute('CREATE TABLE "COMMAND_IN_LEAGUES" (league TEXT, command TEXT);')
-        c.execute('CREATE TABLE "BOT_USERS" (user_id INT);')
-        c.execute('CREATE TABLE "ALL_MATCHES" (league TEXT, team TEXT, team1 TEXT, team2 TEXT, t1 INTEGER, t2 INTEGER, date TEXT, t INTEGER);')
+        c = conn.cursor()
+        data = (country, league, team, team1[x], team2[x], t1[x], t2[x], date[x], t[x])   # Вся информация о матче
+        c.execute("INSERT INTO ALL_MATCHES VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);", data)      # Добавление данных в БД
         conn.commit()
         conn.close()
+    print('writed')
+
+def add_data_match(team, cookie, token):
+    data = get_actual_matches(team, cookie, token)
+    item_lxml = html.fromstring(data)
+    soup = BeautifulSoup(data, 'html.parser')  
+    all_mathes = soup.find_all('div', class_='inbox-item') 
+    q_m = len(all_mathes)
+    print(q_m)
+    if q_m > 1:
+        teams = [item_lxml.xpath(f'div[{x+1}]/p[1]/a/text()')[0].split(' - ') for x in range(q_m)]
+        league = [item_lxml.xpath(f'div[{x+1}]/p[2]/a/text()')[0] for x in range(q_m)]
+        date = [f'{item_lxml.xpath(f"div[{x+1}]/p[3]/text()")[0]}.21' for x in range(q_m)]
+        
+        for x in range(q_m):
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            data = (league[x], teams[x][0], teams[x][1], date[x])   # Вся информация о матче
+            c.execute("INSERT INTO UPCOMING_MATCHES VALUES(?, ?, ?, ?);", data)      # Добавление данных в БД
+            conn.commit()
+            conn.close()
 
 
-def r():
-    xsrf, laravel, user_xsrf = Parser.get_cookie()
-    for i in Parser.get_commands():
-        print(i[1])
-        html = Parser.get_html(i[1], 100, f'{xsrf};{laravel}', user_xsrf)
-        print('parsed')
-        Parser.add_data(html, i[0], i[1])
-        print('writed')
+def r(t, cookie, token, commands):
+    for i in range(0,len(commands)-4, 4):
+        print(commands[i+t])
+        try:
+            add_data(commands[i+t][0], commands[i+t][1], commands[i+t][2], cookie, token)
+        except:
+            print('o')
 
-        return 0
+def r2(t, cookie, token, commands):
+    for i in range(0,len(commands)-4, 4):
+        print(commands[i+t])
+        add_data_match(commands[i+t][2], cookie, token)
 
-if __name__ == '__main__':
-    r()
+def multi(k):
+    cookie, token = get_cookie()
+    commands = get_commands()
+    if k == 1:
+        for i in range(4):
+            th = Thread(target=r, args=(i, cookie, token, commands))
+            th.start()
+    if k == 2:
+        for i in range(4):
+            th = Thread(target=r2, args=(i, cookie, token, commands))
+            th.start()
