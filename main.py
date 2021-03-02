@@ -5,7 +5,8 @@ import line
 import schedule, time
 import telebot
 from multiprocessing.context import Process
- 
+import key
+
 def nnn():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
@@ -14,7 +15,7 @@ def nnn():
     conn.commit()
     conn.close()
 
-bot = telebot.TeleBot('1645528528:AAH3sDo1JUt2uLcLpY8RrB6JrVaXIT9N-LQ')
+bot = telebot.TeleBot(key.tg)
 
 def get_users():
     conn = sqlite3.connect('database.db')
@@ -36,7 +37,7 @@ def append_data(user_id):
         if user_id == int(users[i][-1]):
             status = 1
     if status == 0:
-        #c.execute(f"INSERT INTO BOT_USERS (user_id) VALUES ({user_id});")
+        c.execute(f"INSERT INTO BOT_USERS (user_id) VALUES ({user_id});")
         conn.commit() 
         conn.close()
         print(status)
@@ -50,29 +51,17 @@ def append_data(user_id):
 def send_message1():
     matches = line.get_message()
     for match in matches:
-        #country, league, team1, team2, time_start_match, kf = msg
-        country, league, team1 = match
+        country, league, team1, team2, date, t = match
+        kf = 0
 
-        """msg = f'''Сигнал #1 🚨 
-            {country} {league} 
-            {team1} - {team2} 
-            Начало матча {time_start_match}
-            Ставка - ИТ1Б(0,5) в первом тайме 
-            Коэффициент - {kf}'''"""
-
-        msg = f'''Сигнал #1 🚨 
-            {country} {league} 
-            {team1}
-            Начало матча time
-            Ставка - ИТ1Б(0,5) в первом тайме'''
+        msg = f'''Сигнал #1 🚨\n{country} {league}\n{team1} - {team2}\nНачало матча {date}\nСтавка - ИТ{t}Б(0,5) в первом тайме'''
 
         for user_id in get_users():
             print(user_id[0])
             bot.send_message(user_id[0], msg)
 
 
-schedule.every().day.at("08:54").do(send_message1)
-
+schedule.every().day.at("11:59").do(send_message1)
 
 @bot.message_handler(commands=['start'])
 def start_message(message):

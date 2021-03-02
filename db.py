@@ -38,7 +38,7 @@ def show_data_in_table(table):
     c = conn.cursor()
     c.execute(f'SELECT * FROM "{table}"')
     
-    c = c.fetchmany(100000)
+    c = c.fetchall()
     conn.close()
 
     return c

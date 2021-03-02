@@ -116,20 +116,19 @@ def get_line(team, league):
 
 def get_message():
 
-    m_today = today_matches.today_match()
+    m_today = today_matches.today_match()[0]
 
     msg = []
-    for command in get_commands():
-        for m in m_today:
-            if command[2] == m[1]:
+    for m in m_today:
+        for command in get_commands():
+            if command[2] == m[1] or command[2] == m[2]:
                 if len(get_line(command[2], command[1])) > 10:
                     n = line_analizer(get_line(command[2], command[1]))
                     if n[4] == n[0] or n[5] == n[2]:
                             if n[0] > n[2]:
-                                print(command, 'lose', m[2])
+                                msg.append([command[0], command[1], m[1], m[2], m[3], 1])
                             else:
-                                print(command, 'win', m[2])
-                            #msg.append()
+                                msg.append([command[0], command[1], m[1], m[2], m[3], 2])
     return msg
 
-get_message()
+print(get_message())
